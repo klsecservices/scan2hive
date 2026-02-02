@@ -1,0 +1,18 @@
+[project]
+name = "scan2hive"
+version = "0.1.0"
+description = "Tool for importing scan results to Hive"
+requires-python = ">=3.12"
+dependencies = [
+	"marshmallow<4.0",
+	"hive-library",
+    "beautifulsoup4",
+    "lxml"
+]
+
+[project.scripts]
+scan2hive = "scan2hive.entry:entry"
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"

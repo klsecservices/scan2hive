@@ -1,0 +1,58 @@
+[
+    {
+        "range": "127.0.0.1",
+        "hosts": [
+            {
+                "ip": "127.0.0.1",
+                "hostname": "",
+                "pretty_name": "127.0.0.1",
+                "open_ports": [
+                    80,
+                    82
+                ]
+            }
+        ]
+    },
+    {
+        "range": "::1",
+        "hosts": [
+            {
+                "ip": "::1",
+                "hostname": "",
+                "pretty_name": "::1",
+                "open_ports": [
+                    82,
+                    80
+                ]
+            }
+        ]
+    },
+    {
+        "range": "localhost",
+        "hosts": [
+            {
+                "ip": "127.0.0.1",
+                "hostname": "localhost",
+                "pretty_name": "127.0.0.1 (localhost)",
+                "open_ports": [
+                    82,
+                    80
+                ]
+            }
+        ]
+    },
+    {
+        "range": "test.local",
+        "hosts": [
+            {
+                "ip": "::1",
+                "hostname": "test.local",
+                "pretty_name": "::1 (test.local)",
+                "open_ports": [
+                    80,
+                    82
+                ]
+            }
+        ]
+    }
+]

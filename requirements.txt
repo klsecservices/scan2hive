@@ -1,0 +1,4 @@
+marshmallow<4.0
+hive-library
+beautifulsoup4
+lxml
