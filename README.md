@@ -24,6 +24,8 @@ positional arguments:
     httpx               Import httpx json result in Hive project
     nmap                Import nmap or masscan result (XML format) to Hive project
     poseidon            Import poseidon portscan json result in Hive project
+    dig                 Import dig text result in Hive project
+    dnsx                Import dnsx JSON or TXT result in Hive project
 
 options:
   -h, --help            show this help message and exit
@@ -145,6 +147,41 @@ It parses httpx JSON output (_Download output_ for portscan task), adds tag on e
 ```
 scan2hive poseidon -h       
 usage: scan2hive poseidon [-h] -i INPUT_FILE -t TAG
+
+options:
+  -h, --help            show this help message and exit
+  -i INPUT_FILE, --input INPUT_FILE
+                        Input file
+  -t TAG, --tag TAG     Tag, e.g. 'egress_<IP>'
+```
+### Dig
+It parses a text file with dig output and imports hostnames from A and CNAME records. It adds a tag from `-t` parameter to each hostname. Dig command examples:
+```
+dig -f domains.txt  @8.8.8.8 > resolved.txt
+dig +noall +answer +nocomments -f domains.txt  @8.8.8.8 > resolved.txt
+```
+If dig result is
+```
+ipv4.google.com.  300 IN  CNAME ipv4.l.google.com.
+ipv4.l.google.com.  300 IN  A 142.250.187.206
+```
+Hostnames `ipv4.google.com` and `ipv4.l.google.com` will be crated for IP address `142.250.187.206`.
+
+Parameters:
+```
+scan2hive dig -h
+usage: scan2hive dig [-h] -i INPUT_FILE -t TAG
+
+options:
+  -h, --help            show this help message and exit
+  -i INPUT_FILE, --input INPUT_FILE
+                        Input file
+  -t TAG, --tag TAG     Tag, e.g. 'egress_<IP>'
+```
+### Dnsx
+It parses text or JSONL output from dnsx and imports hostnames from A records.  It adds a tag from `-t` parameter to each hostname.
+```
+usage: scan2hive dnsx [-h] -i INPUT_FILE -t TAG
 
 options:
   -h, --help            show this help message and exit

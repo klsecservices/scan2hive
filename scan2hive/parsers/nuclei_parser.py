@@ -2,11 +2,13 @@ import itertools
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from enum import IntEnum
-from hive_library import HiveLibrary
 from ipaddress import IPv4Address
 from pathlib import Path
 from typing import ClassVar, Self, Callable, List, Optional, Dict, Any
 
+from hive_library import HiveLibrary
+
+from scan2hive.hive.custom_rest_api import CustomHost
 from scan2hive.hive.result import HiveResult
 from scan2hive.log import LoggerManager
 from scan2hive.parsers.base import ScannerFileParser, register_parser
@@ -206,8 +208,8 @@ class NucleiParser(ScannerFileParser, JsonLoadingMixin):
             )
         )
 
-    def _build_hive_hosts(self, endpoint_descriptors: List[EndpointDescriptor]) -> List[HiveLibrary.Host]:
-        hosts: List[HiveLibrary.Host] = []
+    def _build_hive_hosts(self, endpoint_descriptors: List[EndpointDescriptor]) -> List[CustomHost]:
+        hosts: List[CustomHost] = []
 
         ip_sorted = sorted(
             filter(
@@ -218,7 +220,7 @@ class NucleiParser(ScannerFileParser, JsonLoadingMixin):
         )
         grouped_by_ip = itertools.groupby(ip_sorted, key=lambda it: it.ip)
         for ip, ip_group in grouped_by_ip:
-            host = HiveLibrary.Host(ip=ip)
+            host = CustomHost(ip=ip)
             host.ports = [HiveLibrary.Host.Port(
                 port=it.port,
                 tags=[HiveLibrary.Tag(name=self._tag)],
@@ -264,5 +266,7 @@ class NucleiArgumentsHelper(ArgumentsHelper):
                                    default=list(),
                                    required=False,
                                    )
+
+        # nuclei_parser.set_defaults()
 
         return nuclei_parser

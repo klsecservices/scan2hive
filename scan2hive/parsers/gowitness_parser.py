@@ -3,12 +3,14 @@ import sqlite3
 from argparse import ArgumentParser
 from base64 import b64decode
 from dataclasses import dataclass
-from hive_library import HiveLibrary
 from ipaddress import IPv4Address
 from pathlib import Path
 from typing import ClassVar, Self, Callable, List, Optional, Dict, Any
 from urllib.parse import urlparse
 
+from hive_library import HiveLibrary
+
+from scan2hive.hive.custom_rest_api import CustomHost
 from scan2hive.hive.result import GowitnessHiveResult, ScreenshotDescriptor
 from scan2hive.log import LoggerManager
 from scan2hive.parsers.base import ScannerFileParser, register_parser
@@ -143,20 +145,18 @@ class GowitnessParser(ScannerFileParser):
             note = HiveNote(url=it.url, response_code=it.response_code, title=it.title, tech=it.tech,
                             webserver=it.server, cookie_names=it.cookie_names, final_url=it.final_url)
             hostname = urlparse(it.url).hostname
-            port = urlparse(it.url).port if urlparse(it.url).port is not None else 443 if urlparse(
-                it.url).scheme == "https" else 80
+            port = urlparse(it.url).port if urlparse(it.url).port is not None else 443 if urlparse(it.url).scheme == "https" else 80
             screenshot = b64decode(it.screenshot)
-            endpoint_descriptors.append(EndpointDescriptor(ip=it.ip, port=port, hostname=hostname,
-                                                           note=note, screenshot=screenshot))
+            endpoint_descriptors.append(EndpointDescriptor(ip=it.ip, port=port, hostname=hostname, note=note, screenshot=screenshot))
 
         return endpoint_descriptors
 
-    def _build_hive_hosts(self, endpoint_descriptors: List[EndpointDescriptor]) -> List[HiveLibrary.Host]:
-        hosts: List[HiveLibrary.Host] = list()
+    def _build_hive_hosts(self, endpoint_descriptors: List[EndpointDescriptor]) -> List[CustomHost]:
+        hosts: List[CustomHost] = list()
         ip_sorted = sorted(endpoint_descriptors, key=lambda it: it.ip)
         grouped_by_ip = itertools.groupby(ip_sorted, key=lambda it: it.ip)
         for ip, ip_group in grouped_by_ip:
-            host = HiveLibrary.Host(ip=ip)
+            host = CustomHost(ip=ip)
             ip_group = list(ip_group)
             host.names = [HiveLibrary.Host.Name(hostname=it.hostname) for it in
                           filter(

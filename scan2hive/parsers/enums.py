@@ -9,6 +9,8 @@ class ToolType(IntEnum):
     HttpX = auto()
     Gowitness = auto()
     Poseidon = auto()
+    Dig = auto()
+    Dnsx = auto()
 
     @classmethod
     def from_name(cls, name: str) -> Self:
@@ -17,7 +19,9 @@ class ToolType(IntEnum):
             "nuclei": ToolType.Nuclei,
             "httpx": ToolType.HttpX,
             "gowitness": ToolType.Gowitness,
-            "poseidon": ToolType.Poseidon
+            "poseidon": ToolType.Poseidon,
+            "dig": ToolType.Dig,
+            "dnsx": ToolType.Dnsx,
         }.get(name, cls.Unknown)
 
     @property
@@ -71,3 +75,16 @@ class InputType(IntEnum):
     Unknown = -1
     File = auto()
     Database = auto()
+    
+
+class DnsRecordType(Enum):
+    A = "A"
+    AAAA = "AAAA"
+    CNAME = "CNAME"
+    MX = "MX"
+    TXT = "TXT"
+    NS = "NS"
+
+    @classmethod
+    def allowed_values(cls):
+        return [it.value for it in cls]

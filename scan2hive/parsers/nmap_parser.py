@@ -1,14 +1,16 @@
 import itertools
 from argparse import ArgumentParser
-from bs4 import BeautifulSoup, element
 from dataclasses import dataclass
-from hive_library import HiveLibrary
-from hive_library.enum import RecordTypes
 from ipaddress import IPv4Address
 from pathlib import Path
 from time import time
-from typing import ClassVar, Self, Callable, List, Optional, Set, Dict, Any
+from typing import ClassVar, Self, Callable, List, Optional
 
+from bs4 import element
+from hive_library import HiveLibrary
+from hive_library.enum import RecordTypes
+
+from scan2hive.hive.custom_rest_api import CustomHost
 from scan2hive.hive.result import HiveResult
 from scan2hive.log import LoggerManager
 from scan2hive.parsers.base import ScannerFileParser, register_parser
@@ -130,10 +132,12 @@ class PortInfo:
         protocol = element.get('protocol')
         state_tag: element.Tag = element.find('state')
         state = state_tag.get('state', 'unknown') if state_tag is not None else 'unknown'
+        if state == 'open|filtered':
+            state = 'unknown'
         service = ServiceInfo.from_tag(element.find('service')) if element.find('service') is not None else None
 
-        scripts = [ScriptInfo.from_tag(tag) for tag in
-                   element.find_all('script', recursive=False)] if element.find_all('script', recursive=False) is not None else []
+        scripts = [ScriptInfo.from_tag(tag) for tag in element.find_all('script', recursive=False)] if element.find_all(
+            'script', recursive=False) is not None else []
 
         return cls(number=number, protocol=protocol, state=state, service=service, scripts=scripts)
 
@@ -172,15 +176,15 @@ class ScanEntry:
         if hostnames_tag is not None:
             hostnames = [hostname.get("name") for hostname in
                          hostnames_tag.find_all("hostname")] if hostnames_tag.find_all("hostname") else []
-        scripts = [ScriptInfo.from_tag(tag) for tag
-                   in elem.find_all('script', recursive=False)] if elem.find_all('script', recursive=False) is not None else []
+        scripts = [ScriptInfo.from_tag(tag) for tag in
+                   elem.find_all('script', recursive=False)] if elem.find_all('script', recursive=False) is not None else []
         ports_tag = elem.find("ports")
         ports = [PortInfo.from_tag(port_tag) for port_tag in
                  ports_tag.find_all("port", recursive=False)] if ports_tag else []
 
         return cls(ip=ip, hostnames=hostnames, ports=ports, scripts=scripts)
 
-    def to_hive_host(self, tag: str, script_parser_type: ScriptParsingType) -> HiveLibrary.Host:
+    def to_hive_host(self, tag: str, script_parser_type: ScriptParsingType, any_state: bool) -> CustomHost:
         def _get_hostnames_from_scripts(host: ScanEntry) -> List[HiveLibrary.Host.Name]:
             scripts_with_hostnames = ["ssl-cert"]
             hostnames: List[HiveLibrary.Host.Name] = list()
@@ -192,18 +196,31 @@ class ScanEntry:
                     if script.id not in scripts_with_hostnames:
                         continue
                     if script.id == "ssl-cert":
-                        subject_table = next(filter(lambda table: table.key == "subject", script.tables))
-                        hostnames.append(HiveLibrary.Host.Name(hostname=subject_table.elements[0].text,
+                        subject_tables = filter(
+                            lambda table: table.key == "subject",
+                            script.tables)
+                        for subject_table in subject_tables:
+                            commonName_elements = filter(
+                                lambda element: element.key == "commonName",
+                                subject_table.elements)
+                            for commonName_element in commonName_elements:
+                                hostnames.append(HiveLibrary.Host.Name(hostname=commonName_element.text,
                                                                tags=[HiveLibrary.Tag(name="from script ssl-cert")]))
             return hostnames
 
-        host = HiveLibrary.Host(ip=self.ip)
+        host = CustomHost(ip=self.ip)
         for hostname in set(self.hostnames):
             host.names.append(HiveLibrary.Host.Name(hostname=hostname))
         for hostname in _get_hostnames_from_scripts(self):
             host.names.append(hostname)
-        for port in self.ports:
-            host.ports.append(port.to_hive_port(tag=tag, script_parser_type=script_parser_type))
+        if any_state:
+            host.ports = [port.to_hive_port(tag=tag, script_parser_type=script_parser_type) for port in self.ports]
+        else:
+            host.ports = [port.to_hive_port(tag=tag, script_parser_type=script_parser_type) for port in
+                          filter(
+                              lambda it: it.state == 'open',
+                              self.ports
+                          )]
 
         if script_parser_type == ScriptParsingType.as_record:
             host.records = list()
@@ -220,11 +237,11 @@ class ScanEntry:
 class NmapParser(ScannerFileParser, XMLLoadingMixin):
     Type: ClassVar[ToolType] = ToolType.Nmap
 
-    def __init__(self, input_file: Path, tag: str, script_parsing: str, max_ports: int, *args, **kwargs):
+    def __init__(self, input_file: Path, tag: str, script_parsing: str, max_ports: int, any_state: bool, *args, **kwargs):
         super().__init__(input_file, tag, *args, **kwargs)
         self._script_parsing_type: ScriptParsingType = ScriptParsingType.from_name(script_parsing)
         self._max_ports: int = max_ports
-
+        self._any_state = any_state
         self._raw_data: element.Tag
         self._raw_scan_entries: List[ScanEntry] = None
 
@@ -281,18 +298,16 @@ class NmapParser(ScannerFileParser, XMLLoadingMixin):
         for entry in entries:
             host = entry
             ports = list(
-                filter(
-                    lambda it: it.protocol in accepted_protocols and min_port_number <= it.number <= max_port_number,
-                    host.ports
-                ))
+                filter(lambda it: it.protocol in accepted_protocols and min_port_number <= it.number <= max_port_number,
+                       host.ports))
             host.ports = ports
             filtered_entries.append(host)
         return filtered_entries
 
-    def _build_hive_hosts(self, entries: List[ScanEntry]) -> List[HiveLibrary.Host]:
-        hosts: List[HiveLibrary.Host] = list()
+    def _build_hive_hosts(self, entries: List[ScanEntry]) -> List[CustomHost]:
+        hosts: List[CustomHost] = list()
         for it in entries:
-            host = it.to_hive_host(script_parser_type=self._script_parsing_type, tag=self._tag)
+            host = it.to_hive_host(script_parser_type=self._script_parsing_type, tag=self._tag, any_state=self._any_state)
             if len(host.ports) > self._max_ports:
                 host.notes.append(HiveLibrary.Note(text=f"{len(host.ports)} ports. No port will be imported"))
                 logger.info(f"Host {host.ip} has {len(host.ports)} open ports. Skip ports.")
@@ -329,5 +344,10 @@ class HttpxArgumentsHelper(ArgumentsHelper):
                                  required=False,
                                  type=str,
                                  default=ScriptParsingType.as_record.value)
+        nmap_parser.add_argument("-a", "--any-state",
+                               help="Import ports with any state. Default is False",
+                               default=False,
+                               action='store_true',
+                               required=False)
 
         return nmap_parser

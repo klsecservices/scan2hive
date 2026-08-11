@@ -1,11 +1,13 @@
 import itertools
 from argparse import ArgumentParser
 from dataclasses import dataclass
-from hive_library import HiveLibrary
 from ipaddress import IPv4Address
 from pathlib import Path
 from typing import ClassVar, Self, Callable, List, Optional, Dict, Any, Set
 
+from hive_library import HiveLibrary
+
+from scan2hive.hive.custom_rest_api import CustomHost
 from scan2hive.hive.result import HiveResult
 from scan2hive.log import LoggerManager
 from scan2hive.parsers.base import ScannerFileParser, register_parser
@@ -86,10 +88,10 @@ class PoseidonParser(ScannerFileParser, JsonLoadingMixin):
 
         return grouped_portscan_entries
 
-    def _build_hive_hosts(self, portscan_entries: List[PortscanEntry]) -> List[HiveLibrary.Host]:
-        hosts: List[HiveLibrary.Host] = []
+    def _build_hive_hosts(self, portscan_entries: List[PortscanEntry]) -> List[CustomHost]:
+        hosts: List[CustomHost] = []
         for it in portscan_entries:
-            host = HiveLibrary.Host(ip=it.ip)
+            host = CustomHost(ip=it.ip)
             host.ports = [HiveLibrary.Host.Port(port=port, tags=[HiveLibrary.Tag(name=self._tag)]) for port in it.ports]
             host.names = [HiveLibrary.Host.Name(hostname=name) for name in it.hostnames]
             hosts.append(host)

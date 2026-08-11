@@ -1,23 +1,23 @@
+import json
 from dataclasses import dataclass
 from datetime import datetime
-from hive_library import HiveLibrary
 from ipaddress import IPv4Address
 from pathlib import Path
 from typing import List
 
-from scan2hive.hive.custom_rest_api import CustomHostSchema
+from scan2hive.hive.custom_rest_api import CustomHostSchema, CustomHost
 
 
 @dataclass
 class HiveResult:
-    hosts: List[HiveLibrary.Host]
+    hosts: List[CustomHost]
 
     def to_str(self) -> str:
         return "\n".join(map(str, self.hosts))
 
     def to_json(self) -> str:
         hosts_schema: CustomHostSchema = CustomHostSchema(many=True)
-        return hosts_schema.dump(self.hosts)
+        return json.dumps(hosts_schema.dump(self.hosts))
 
 
 @dataclass

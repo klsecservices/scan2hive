@@ -141,6 +141,14 @@ class Utility:
                                        default=False,
                                        action='store_true',
                                        required=False)
+                subparser.add_argument("-s", "--server",
+                                       required=False,
+                                       type=str,
+                                       help="Hive server. Example: http://10.10.10.10")
+                subparser.add_argument("-p", "--project",
+                                       required=False,
+                                       type=str,
+                                       help="Project UUID. Example: 8f96ef17-f2f1-4056-b401-6c44f7f9156")
             elif mode_args.upload:
                 subparser.add_argument("-s", "--server",
                                        required=True,

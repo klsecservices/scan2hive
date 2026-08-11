@@ -1,12 +1,16 @@
+from json.decoder import JSONDecodeError
+from typing import List, Optional, Dict
+from uuid import UUID
+from ipaddress import IPv6Address
+
 from hive_library import HiveLibrary
 from hive_library.rest import HiveRestApi
-from json.decoder import JSONDecodeError
 from marshmallow import (
     fields
 )
-from typing import List, Optional, Dict
-from uuid import UUID
 
+class CustomHost(HiveLibrary.Host):
+    ipv6: Optional[IPv6Address] = None
 
 # serialize "extra" field
 class CustomRecordSchema(HiveLibrary.Record.Schema):
@@ -33,9 +37,9 @@ class CustomPortSchema(HiveLibrary.Host.Port.Schema):
         load_default=[],
     )
 
-
 # use custom schemas and serialize notes
 class CustomHostSchema(HiveLibrary.Host.Schema):
+    ipv6 = fields.IPv6(missing=None, default=None, allow_none=True)
     notes = fields.Nested(
         lambda: NoteSchema,
         load_only=False,
